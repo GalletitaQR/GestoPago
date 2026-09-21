@@ -14,11 +14,28 @@ public interface GestoPagoProductoMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "fechaCreacion", ignore = true)
     @Mapping(target = "fechaActualizacion", ignore = true)
+    @Mapping(target = "codigoProducto", source = "codigoProducto")
+    @Mapping(target = "nombre", source = "nombre")
+    @Mapping(target = "descripcion", source = "descripcion")
+    @Mapping(target = "categoria", source = "categoria")
+    @Mapping(target = "precio", source = "precio")
+    @Mapping(target = "costo", ignore = true)
+    @Mapping(target = "comision", ignore = true)
+    @Mapping(target = "activo", constant = "true")
     GestoPagoProducto toEntity(GestoPagoProductDto dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "fechaCreacion", ignore = true)
     @Mapping(target = "fechaActualizacion", ignore = true)
+    @Mapping(target = "codigoProducto", source = "codigoProducto")
+    @Mapping(target = "nombre", source = "nombre")
+    @Mapping(target = "descripcion", source = "descripcion")
+    @Mapping(target = "categoria", source = "categoria")
+    @Mapping(target = "precio", source = "precio")
+    @Mapping(target = "costo", ignore = true)
+    @Mapping(target = "comision", ignore = true)
+    @Mapping(target = "activo", ignore = true)
     void updateEntity(GestoPagoProductDto dto, @MappingTarget GestoPagoProducto entity);
 }
+

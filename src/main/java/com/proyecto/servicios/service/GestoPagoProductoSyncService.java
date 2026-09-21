@@ -32,6 +32,9 @@ public class GestoPagoProductoSyncService {
     @Value("${gestopago.auth.codigo-dispositivo}")
     private String codigoDispositivo;
 
+    @Value("${gestopago.auth.api-key:YSX1HpAFum4TpCecyFBxs4eIjAlbhKqK6fpcSQp8}")
+    private String apiKey;
+
     public GestoPagoProductoSyncService(GestoPagoProductClient gestoPagoProductClient,
                                        GestoPagoProductoRepository productoRepository,
                                        GestoPagoTokenService tokenService,
@@ -64,19 +67,21 @@ public class GestoPagoProductoSyncService {
             }
 
             String authHeader = "Bearer " + tokenOpt.get().getToken();
-            GestoPagoProductListXmlResponse response = gestoPagoProductClient.getProductList(authHeader);
+            GestoPagoProductListXmlResponse response = gestoPagoProductClient.getProductList(authHeader, idDistribuidor, apiKey);
 
             if (response == null || response.getProductos() == null || response.getProductos().isEmpty()) {
-                log.warn("La respuesta del catálogo de GestoPago no contiene productos.");
+                log.warn("La respuesta del catálogo de GestoPago no contiene productos. Mensaje: {}",
+                        response != null && response.getMensaje() != null ? response.getMensaje().getTexto() : "N/A");
                 return;
             }
 
             List<GestoPagoProducto> productosAActualizar = new ArrayList<>();
             for (GestoPagoProductDto dto : response.getProductos()) {
-                if (dto.getCodigoProducto() == null || dto.getCodigoProducto().isBlank()) {
+                String codigo = dto.getCodigoProducto();
+                if (codigo == null || codigo.isBlank()) {
                     continue;
                 }
-                GestoPagoProducto entity = productoRepository.findByCodigoProducto(dto.getCodigoProducto())
+                GestoPagoProducto entity = productoRepository.findByCodigoProducto(codigo)
                         .map(existing -> {
                             productoMapper.updateEntity(dto, existing);
                             return existing;

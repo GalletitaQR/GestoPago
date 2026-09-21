@@ -11,35 +11,70 @@ import java.math.BigDecimal;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GestoPagoProductDto {
 
-    @JacksonXmlProperty(localName = "codigo")
-    @JsonProperty("codigo")
-    private String codigoProducto;
+    @JacksonXmlProperty(isAttribute = true, localName = "idProducto")
+    @JsonProperty("idProducto")
+    private String idProducto;
 
-    @JacksonXmlProperty(localName = "nombre")
-    @JsonProperty("nombre")
-    private String nombre;
+    @JacksonXmlProperty(isAttribute = true, localName = "idServicio")
+    @JsonProperty("idServicio")
+    private String idServicio;
 
-    @JacksonXmlProperty(localName = "descripcion")
-    @JsonProperty("descripcion")
-    private String descripcion;
+    @JacksonXmlProperty(isAttribute = true, localName = "producto")
+    @JsonProperty("producto")
+    private String producto;
 
-    @JacksonXmlProperty(localName = "categoria")
-    @JsonProperty("categoria")
-    private String categoria;
+    @JacksonXmlProperty(isAttribute = true, localName = "servicio")
+    @JsonProperty("servicio")
+    private String servicio;
 
-    @JacksonXmlProperty(localName = "precio")
+    @JacksonXmlProperty(isAttribute = true, localName = "precio")
     @JsonProperty("precio")
     private BigDecimal precio;
 
-    @JacksonXmlProperty(localName = "costo")
-    @JsonProperty("costo")
-    private BigDecimal costo;
+    @JacksonXmlProperty(isAttribute = true, localName = "idCatTipoServicio")
+    @JsonProperty("idCatTipoServicio")
+    private String idCatTipoServicio;
 
-    @JacksonXmlProperty(localName = "comision")
-    @JsonProperty("comision")
-    private BigDecimal comision;
+    @JacksonXmlProperty(isAttribute = true, localName = "tipoFront")
+    @JsonProperty("tipoFront")
+    private String tipoFront;
 
-    @JacksonXmlProperty(localName = "activo")
-    @JsonProperty("activo")
-    private Boolean activo;
+    @JacksonXmlProperty(isAttribute = true, localName = "hasDigitoVerificador")
+    @JsonProperty("hasDigitoVerificador")
+    private Boolean hasDigitoVerificador;
+
+    @JacksonXmlProperty(isAttribute = true, localName = "showAyuda")
+    @JsonProperty("showAyuda")
+    private Boolean showAyuda;
+
+    @JacksonXmlProperty(isAttribute = true, localName = "tipoReferencia")
+    @JsonProperty("tipoReferencia")
+    private String tipoReferencia;
+
+    @JacksonXmlProperty(localName = "legend")
+    @JsonProperty("legend")
+    private String legend;
+
+    public String getCodigoProducto() {
+        if (idProducto != null && !idProducto.isBlank()) {
+            return idProducto;
+        }
+        if (idServicio != null && producto != null) {
+            return idServicio + "-" + producto;
+        }
+        return null;
+    }
+
+    public String getNombre() {
+        return producto;
+    }
+
+    public String getDescripcion() {
+        return legend;
+    }
+
+    public String getCategoria() {
+        return servicio;
+    }
 }
+

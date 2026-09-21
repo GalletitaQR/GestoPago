@@ -12,15 +12,25 @@ import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JacksonXmlRootElement(localName = "response")
+@JacksonXmlRootElement(localName = "RESPONSE")
 public class GestoPagoProductListXmlResponse {
 
-    private Integer status;
+    @JacksonXmlProperty(localName = "MENSAJE")
+    private Mensaje mensaje;
 
-    private String message;
-
-    @JacksonXmlElementWrapper(useWrapping = false)
+    @JacksonXmlElementWrapper(localName = "PRODUCTOS")
     @JacksonXmlProperty(localName = "producto")
     @JsonProperty("productos")
     private List<GestoPagoProductDto> productos = new ArrayList<>();
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Mensaje {
+        @JacksonXmlProperty(localName = "CODIGO")
+        private String codigo;
+
+        @JacksonXmlProperty(localName = "TEXTO")
+        private String texto;
+    }
 }
+
