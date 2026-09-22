@@ -16,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/gestopago")
 @Tag(name = "Productos GestoPago (Redis & PostgreSQL)", description = "APIs para consultar el catálogo de productos con búsqueda prioritaria en Redis y respaldo en PostgreSQL.")
+@CrossOrigin(origins = "*")
 public class GestoPagoProductoController {
 
     private final GestoPagoProductoSyncService productoSyncService;
