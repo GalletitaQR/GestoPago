@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,11 +26,20 @@ public class GestoPagoProductoSyncService {
 
     public static final String REDIS_KEY_PRODUCTOS = "gestopago:productos";
 
-    private final GestoPagoProductClient gestoPagoProductClient;
-    private final GestoPagoProductoRepository productoRepository;
-    private final GestoPagoProductoMapper productoMapper;
-    private final GestoPagoTokenService tokenService;
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private GestoPagoProductClient gestoPagoProductClient;
+
+    @Autowired
+    private GestoPagoProductoRepository productoRepository;
+
+    @Autowired
+    private GestoPagoProductoMapper productoMapper;
+
+    @Autowired
+    private GestoPagoTokenService tokenService;
+
+    @Autowired(required = false)
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -42,21 +52,6 @@ public class GestoPagoProductoSyncService {
 
     @Value("${gestopago.auth.api-key:YSX1HpAFum4TpCecyFBxs4eIjAlbhKqK6fpcSQp8}")
     private String apiKey;
-
-    @Autowired
-    public GestoPagoProductoSyncService(GestoPagoProductClient gestoPagoProductClient,
-                                       GestoPagoProductoRepository productoRepository,
-                                       GestoPagoTokenService tokenService,
-                                       GestoPagoProductoMapper productoMapper,
-                                       @Autowired(required = false) RedisTemplate<String, Object> redisTemplate) {
-        this.gestoPagoProductClient = gestoPagoProductClient;
-        this.productoRepository = productoRepository;
-        this.tokenService = tokenService;
-        this.productoMapper = productoMapper;
-        this.redisTemplate = redisTemplate;
-    }
-
-
 
     /**
      * Sincronización programada diaria (cada 24 horas).
@@ -103,13 +98,7 @@ public class GestoPagoProductoSyncService {
             List<GestoPagoProductDto> nuevosProductos = (response != null && response.getProductos() != null)
                     ? response.getProductos() : Collections.emptyList();
 
-            long countBdActual = 0;
-            try {
-                countBdActual = productoRepository.count();
-            } catch (Exception e) {
-                log.error("Error al consultar el conteo actual de productos en PostgreSQL BD: {}", e.getMessage(), e);
-            }
-
+            long countBdActual = productoRepository.count();
             int tamanoNuevo = nuevosProductos.size();
 
             // REGLA 1: Si viene vacío -> NO actualizar
@@ -148,50 +137,23 @@ public class GestoPagoProductoSyncService {
             // REGLA 4: Si es mayor -> SÍ actualizar (Postgres primero, después Redis)
             log.info("Regla 4: El nuevo catálogo ({}) es MAYOR que el catálogo actual en BD ({}). Procediendo a actualizar...", tamanoNuevo, countBdActual);
 
-            List<GestoPagoProducto> productosAActualizar = new ArrayList<>();
-            for (GestoPagoProductDto dto : nuevosProductos) {
-                String codigo = dto.getCodigoProducto();
-                if (codigo == null || codigo.isBlank()) {
-                    continue;
-                }
-                GestoPagoProducto entity = productoRepository.findByCodigoProducto(codigo)
-                        .map(existing -> {
-                            productoMapper.updateEntity(dto, existing);
-                            return existing;
-                        })
-                        .orElseGet(() -> productoMapper.toEntity(dto));
-
-                productosAActualizar.add(entity);
-            }
+            List<GestoPagoProducto> productosAActualizar = nuevosProductos.stream()
+                    .filter(dto -> dto.getCodigoProducto() != null && !dto.getCodigoProducto().isBlank())
+                    .map(dto -> productoRepository.findByCodigoProducto(dto.getCodigoProducto())
+                            .map(existing -> {
+                                productoMapper.updateEntity(dto, existing);
+                                return existing;
+                            })
+                            .orElseGet(() -> productoMapper.toEntity(dto)))
+                    .collect(Collectors.toList());
 
             // 1. Guardar en Postgres
-            try {
-                productoRepository.saveAll(productosAActualizar);
-                log.info("Catálogo guardado exitosamente en PostgreSQL. Total guardados: {}", productosAActualizar.size());
-                respuesta.put("guardadoPostgres", true);
-            } catch (Exception e) {
-                log.error("Excepción al guardar catálogo en PostgreSQL: {}", e.getMessage(), e);
-                respuesta.put("codigo", 500);
-                respuesta.put("actualizado", false);
-                respuesta.put("guardadoPostgres", false);
-                respuesta.put("mensaje", "Error al guardar catálogo en PostgreSQL: " + e.getMessage());
-                return respuesta; // Si Postgres falla, no guardamos en Redis
-            }
+            productoRepository.saveAll(productosAActualizar);
+            log.info("Catálogo guardado exitosamente en PostgreSQL. Total guardados: {}", productosAActualizar.size());
+            respuesta.put("guardadoPostgres", true);
 
             // 2. Guardar en Redis después de Postgres
-            boolean redisExito = false;
-            try {
-                if (redisTemplate != null) {
-                    redisTemplate.opsForValue().set(REDIS_KEY_PRODUCTOS, productosAActualizar);
-                    log.info("Catálogo guardado exitosamente en Redis con la clave: {}", REDIS_KEY_PRODUCTOS);
-                    redisExito = true;
-                } else {
-                    log.warn("redisTemplate es nulo. No se pudo guardar en Redis.");
-                }
-            } catch (Exception e) {
-                log.error("Excepción al guardar catálogo en Redis (la app continúa de forma segura sin tronar): {}", e.getMessage(), e);
-                respuesta.put("errorRedis", e.getMessage());
-            }
+            boolean redisExito = guardarEnRedis(REDIS_KEY_PRODUCTOS, productosAActualizar, respuesta);
 
             respuesta.put("codigo", 200);
             respuesta.put("actualizado", true);
@@ -204,7 +166,7 @@ public class GestoPagoProductoSyncService {
             respuesta.put("data", productosAActualizar);
 
         } catch (Throwable t) {
-            log.error("Excepción global no esperada durante la sincronización de productos (capturada con try-catch): {}", t.getMessage(), t);
+            log.error("Excepción global no esperada durante la sincronización de productos: {}", t.getMessage(), t);
             respuesta.put("codigo", 500);
             respuesta.put("actualizado", false);
             respuesta.put("mensaje", "Error interno durante la sincronización de catálogo: " + t.getMessage());
@@ -225,20 +187,11 @@ public class GestoPagoProductoSyncService {
 
         try {
             // 1. Consultar primero en la caché de Redis
-            if (redisTemplate != null) {
-                try {
-                    Object redisData = redisTemplate.opsForValue().get(REDIS_KEY_PRODUCTOS);
-                    if (redisData != null) {
-                        List<GestoPagoProducto> listFromRedis = convertirListaRedis(redisData);
-                        if (!listFromRedis.isEmpty()) {
-                            productos = listFromRedis;
-                            origen = "REDIS";
-                            log.info("Éxito: Se obtuvieron {} productos desde la caché de Redis.", productos.size());
-                        }
-                    }
-                } catch (Exception e) {
-                    log.warn("No se pudo consultar la lista de productos en Redis ({}), recurriendo a respaldo PostgreSQL", e.getMessage());
-                }
+            List<GestoPagoProducto> listFromRedis = obtenerDeRedis();
+            if (!listFromRedis.isEmpty()) {
+                productos = listFromRedis;
+                origen = "REDIS";
+                log.info("Éxito: Se obtuvieron {} productos desde la caché de Redis.", productos.size());
             }
 
             // 2. Respaldo en PostgreSQL si Redis está vacío o no disponible
@@ -252,7 +205,7 @@ public class GestoPagoProductoSyncService {
                 if (!productos.isEmpty()) {
                     origen = "POSTGRESQL";
                     log.info("Productos obtenidos desde PostgreSQL BD (Total: {}). Actualizando la caché de Redis...", productos.size());
-                    guardarEnRedisSilencioso(REDIS_KEY_PRODUCTOS, productos);
+                    guardarEnRedis(REDIS_KEY_PRODUCTOS, productos, null);
                 } else {
                     log.info("BD local vacía. Disparando sincronización inicial con servicio externo...");
                     Map<String, Object> syncResult = sincronizarProductosConRespuesta();
@@ -279,6 +232,37 @@ public class GestoPagoProductoSyncService {
         return respuesta;
     }
 
+    private List<GestoPagoProducto> obtenerDeRedis() {
+        if (redisTemplate == null) return Collections.emptyList();
+        try {
+            Object redisData = redisTemplate.opsForValue().get(REDIS_KEY_PRODUCTOS);
+            if (redisData != null) {
+                return convertirListaRedis(redisData);
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo consultar la lista de productos en Redis ({}), recurriendo a respaldo PostgreSQL", e.getMessage());
+        }
+        return Collections.emptyList();
+    }
+
+    private boolean guardarEnRedis(String key, Object data, Map<String, Object> respuesta) {
+        if (redisTemplate == null) {
+            log.warn("redisTemplate es nulo. No se pudo guardar en Redis.");
+            return false;
+        }
+        try {
+            redisTemplate.opsForValue().set(key, data);
+            log.info("Catálogo guardado exitosamente en Redis con la clave: {}", key);
+            return true;
+        } catch (Exception e) {
+            log.error("Excepción al guardar catálogo en Redis: {}", e.getMessage(), e);
+            if (respuesta != null) {
+                respuesta.put("errorRedis", e.getMessage());
+            }
+            return false;
+        }
+    }
+
     private List<GestoPagoProducto> convertirListaRedis(Object redisData) {
         if (redisData == null) return Collections.emptyList();
         try {
@@ -295,18 +279,6 @@ public class GestoPagoProductoSyncService {
         }
         return Collections.emptyList();
     }
-
-    private void guardarEnRedisSilencioso(String key, Object data) {
-        try {
-            if (redisTemplate != null) {
-                redisTemplate.opsForValue().set(key, data);
-                log.info("Caché de Redis actualizada correctamente para la clave: {}", key);
-            }
-        } catch (Exception e) {
-            log.warn("No se pudo guardar la clave '{}' en Redis: {}", key, e.getMessage());
-        }
-    }
-
 
     /**
      * Mantiene compatibilidad con llamadas existentes que esperan List<GestoPagoProducto>.
