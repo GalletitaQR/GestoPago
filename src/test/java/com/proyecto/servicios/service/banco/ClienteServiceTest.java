@@ -34,6 +34,9 @@ class ClienteServiceTest {
     @Mock
     private CuentaService cuentaService;
 
+    @Mock
+    private UsuarioService usuarioService;
+
     @InjectMocks
     private ClienteService clienteService;
 

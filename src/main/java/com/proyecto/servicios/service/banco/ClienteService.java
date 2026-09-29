@@ -25,8 +25,11 @@ public class ClienteService {
     @Autowired
     private CuentaService cuentaService;
 
+    @Autowired
+    private UsuarioService usuarioService;
+
     /**
-     * Registra un nuevo cliente validando las reglas de negocio y creando su cuenta bancaria.
+     * Registra un nuevo cliente validando las reglas de negocio, creando su cuenta bancaria y usuario de acceso.
      */
     @Transactional
     public ClienteResponseDto registrarCliente(ClienteRequestDto request) {
@@ -95,6 +98,9 @@ public class ClienteService {
 
         // 7. Crear automáticamente la Cuenta Bancaria
         var cuenta = cuentaService.crearCuentaParaCliente(guardado);
+
+        // 8. Crear automáticamente el Usuario de Acceso
+        usuarioService.crearUsuarioParaCliente(guardado, request.getPassword());
 
         ClienteResponseDto response = mapToResponseDto(guardado);
         response.setNumeroCuenta(cuenta.getNumeroCuenta());
@@ -257,6 +263,9 @@ public class ClienteService {
 
         // Desactivar sus cuentas bancarias asociadas (Solo clientes activos pueden tener cuentas activas)
         cuentaService.desactivarCuentasDeCliente(id);
+
+        // Desactivar usuario de acceso asociado
+        usuarioService.desactivarUsuarioPorClienteId(id);
 
         log.info("Baja lógica completada para cliente ID: {}", id);
     }
