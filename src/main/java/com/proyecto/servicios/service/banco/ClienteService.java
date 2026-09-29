@@ -159,6 +159,84 @@ public class ClienteService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    /**
+     * Actualiza la información de un cliente existente.
+     * Bloquea explícitamente la modificación de CURP, RFC y Número de Cuenta.
+     */
+    @Transactional
+    public ClienteResponseDto actualizarCliente(Long id, com.proyecto.servicios.model.banco.ClienteUpdateDto request) {
+        log.info("Iniciando actualización de cliente con ID: {}", id);
+
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new ClienteNoEncontradoException("Cliente no encontrado con ID: " + id));
+
+        if (!Boolean.TRUE.equals(cliente.getActivo())) {
+            throw new ReglaNegocioException("No se puede modificar la información de un cliente inactivo.");
+        }
+
+        // Bloqueo de modificación de CURP, RFC y Número de Cuenta
+        if (request.getCurp() != null && !request.getCurp().trim().equalsIgnoreCase(cliente.getCurp())) {
+            throw new ReglaNegocioException("No está permitido modificar la CURP del cliente.");
+        }
+        if (request.getRfc() != null && !request.getRfc().trim().equalsIgnoreCase(cliente.getRfc())) {
+            throw new ReglaNegocioException("No está permitido modificar el RFC del cliente.");
+        }
+        if (request.getNumeroCuenta() != null) {
+            throw new ReglaNegocioException("No está permitido modificar el número de cuenta del cliente.");
+        }
+
+        // Validar correo si cambió
+        String nuevoCorreo = request.getCorreo().trim().toLowerCase();
+        if (!cliente.getCorreo().equalsIgnoreCase(nuevoCorreo) && clienteRepository.existsByCorreo(nuevoCorreo)) {
+            throw new CorreoDuplicadoException("El correo " + nuevoCorreo + " ya está registrado por otro cliente.");
+        }
+
+        // Validar mayoría de edad si cambió la fecha
+        validarMayoriaDeEdad(request.getFechaNacimiento());
+
+        // Actualizar datos personales
+        cliente.setNombre(request.getNombre().trim());
+        cliente.setSegundoNombre(request.getSegundoNombre() != null ? request.getSegundoNombre().trim() : null);
+        cliente.setApellidoPaterno(request.getApellidoPaterno().trim());
+        cliente.setApellidoMaterno(request.getApellidoMaterno().trim());
+        cliente.setFechaNacimiento(request.getFechaNacimiento());
+        cliente.setSexo(request.getSexo());
+        cliente.setNacionalidad(request.getNacionalidad().trim());
+        cliente.setEstadoCivil(request.getEstadoCivil());
+
+        // Actualizar datos de contacto
+        cliente.setCorreo(nuevoCorreo);
+        cliente.setTelefonoMovil(request.getTelefonoMovil().trim());
+        cliente.setTelefonoAlternativo(request.getTelefonoAlternativo() != null ? request.getTelefonoAlternativo().trim() : null);
+
+        // Actualizar información laboral
+        cliente.setOcupacion(request.getOcupacion().trim());
+        cliente.setEmpresa(request.getEmpresa().trim());
+        cliente.setIngresoMensual(request.getIngresoMensual());
+
+        // Actualizar Domicilio
+        DomicilioDto domDto = request.getDomicilio();
+        Domicilio dom = cliente.getDomicilio();
+        if (dom == null) {
+            dom = new Domicilio();
+            dom.setCliente(cliente);
+        }
+        dom.setCalle(domDto.getCalle().trim());
+        dom.setNumeroExterior(domDto.getNumeroExterior().trim());
+        dom.setNumeroInterior(domDto.getNumeroInterior() != null ? domDto.getNumeroInterior().trim() : null);
+        dom.setColonia(domDto.getColonia().trim());
+        dom.setMunicipio(domDto.getMunicipio().trim());
+        dom.setEstado(domDto.getEstado().trim());
+        dom.setCodigoPostal(domDto.getCodigoPostal().trim());
+        dom.setPais(domDto.getPais().trim());
+
+        cliente.setDomicilio(dom);
+
+        Cliente actualizado = clienteRepository.save(cliente);
+        log.info("Cliente ID: {} actualizado correctamente.", actualizado.getId());
+        return mapToResponseDto(actualizado);
+    }
+
     public void validarMayoriaDeEdad(LocalDate fechaNacimiento) {
         if (fechaNacimiento == null) {
             throw new ReglaNegocioException("La fecha de nacimiento es obligatoria.");
