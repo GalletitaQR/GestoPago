@@ -22,8 +22,11 @@ public class ClienteService {
     @Autowired
     private ClienteRepository clienteRepository;
 
+    @Autowired
+    private CuentaService cuentaService;
+
     /**
-     * Registra un nuevo cliente validando las reglas de negocio.
+     * Registra un nuevo cliente validando las reglas de negocio y creando su cuenta bancaria.
      */
     @Transactional
     public ClienteResponseDto registrarCliente(ClienteRequestDto request) {
@@ -90,7 +93,12 @@ public class ClienteService {
         Cliente guardado = clienteRepository.save(cliente);
         log.info("Cliente registrado exitosamente con ID: {}", guardado.getId());
 
-        return mapToResponseDto(guardado);
+        // 7. Crear automáticamente la Cuenta Bancaria
+        var cuenta = cuentaService.crearCuentaParaCliente(guardado);
+
+        ClienteResponseDto response = mapToResponseDto(guardado);
+        response.setNumeroCuenta(cuenta.getNumeroCuenta());
+        return response;
     }
 
     public void validarMayoriaDeEdad(LocalDate fechaNacimiento) {
