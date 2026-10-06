@@ -18,7 +18,6 @@ import java.time.format.DateTimeFormatter;
 @SpringBootApplication
 @EnableScheduling
 @EnableFeignClients
-@EnableJpaRepositories(basePackages = "com.proyecto.servicios.repositorys")
 @EntityScan(basePackages = "com.proyecto.servicios.entity")
 @Slf4j
 
