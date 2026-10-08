@@ -31,6 +31,9 @@ class ClienteServiceTest {
     @Mock
     private ClienteRepository clienteRepository;
 
+    @Mock
+    private CuentaService cuentaService;
+
     @InjectMocks
     private ClienteService clienteService;
 
@@ -79,12 +82,18 @@ class ClienteServiceTest {
             c.setId(1L);
             return c;
         });
+        when(cuentaService.crearCuentaParaCliente(any())).thenReturn(
+                com.proyecto.servicios.entity.banco.Cuenta.builder()
+                        .numeroCuenta("7420123456789")
+                        .build()
+        );
 
         ClienteResponseDto result = clienteService.registrarCliente(requestDto);
 
         assertNotNull(result);
         assertEquals("Juan", result.getNombre());
         assertEquals("PELJ950520HGTXR09", result.getCurp());
+        assertEquals("7420123456789", result.getNumeroCuenta());
         verify(clienteRepository, times(1)).save(any(Cliente.class));
     }
 
