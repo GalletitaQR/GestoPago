@@ -6,6 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/cuentas")
 public class CuentaController {
@@ -14,11 +19,31 @@ public class CuentaController {
     private CuentaService cuentaService;
 
     /**
-     * Endpoint para consultar una cuenta por número de cuenta.
+     * GET /cuentas/activas - Consultar cuentas activas
+     */
+    @GetMapping("/activas")
+    public ResponseEntity<List<CuentaResponseDto>> obtenerCuentasActivas() {
+        return ResponseEntity.ok(cuentaService.obtenerCuentasActivas());
+    }
+
+    /**
+     * GET /cuentas/{numeroCuenta} - Consultar cuenta por número de cuenta
      */
     @GetMapping("/{numeroCuenta}")
     public ResponseEntity<CuentaResponseDto> obtenerCuentaPorNumero(@PathVariable String numeroCuenta) {
         CuentaResponseDto response = cuentaService.obtenerCuentaPorNumero(numeroCuenta);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /cuentas/{numeroCuenta}/saldo - Consultar saldo de una cuenta
+     */
+    @GetMapping("/{numeroCuenta}/saldo")
+    public ResponseEntity<Map<String, Object>> obtenerSaldo(@PathVariable String numeroCuenta) {
+        BigDecimal saldo = cuentaService.obtenerSaldo(numeroCuenta);
+        Map<String, Object> response = new HashMap<>();
+        response.put("numeroCuenta", numeroCuenta);
+        response.put("saldo", saldo);
         return ResponseEntity.ok(response);
     }
 }

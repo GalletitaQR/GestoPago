@@ -34,6 +34,9 @@ class ClienteServiceTest {
     @Mock
     private CuentaService cuentaService;
 
+    @Mock
+    private UsuarioService usuarioService;
+
     @InjectMocks
     private ClienteService clienteService;
 
@@ -124,5 +127,73 @@ class ClienteServiceTest {
 
         assertThrows(CorreoDuplicadoException.class, () -> clienteService.registrarCliente(requestDto));
         verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Debe obtener cliente por CURP exitosamente")
+    void obtenerClientePorCurp_Exitoso() {
+        Cliente cliente = Cliente.builder()
+                .id(1L)
+                .nombre("Juan")
+                .curp("PELJ950520HGTXR09")
+                .rfc("PELJ950520XXX")
+                .correo("juan@example.com")
+                .build();
+
+        when(clienteRepository.findByCurp("PELJ950520HGTXR09")).thenReturn(java.util.Optional.of(cliente));
+
+        ClienteResponseDto res = clienteService.obtenerClientePorCurp("PELJ950520HGTXR09");
+
+        assertNotNull(res);
+        assertEquals("Juan", res.getNombre());
+        assertEquals("PELJ950520HGTXR09", res.getCurp());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar excepción cuando cliente por CURP no existe")
+    void obtenerClientePorCurp_NoEncontrado_LanzaExcepcion() {
+        when(clienteRepository.findByCurp(any())).thenReturn(java.util.Optional.empty());
+
+        assertThrows(com.proyecto.servicios.exception.banco.ClienteNoEncontradoException.class,
+                () -> clienteService.obtenerClientePorCurp("INEXISTENTE123456"));
+    }
+
+    @Test
+    @DisplayName("Debe lanzar excepción al intentar modificar la CURP en actualización")
+    void actualizarCliente_ModificarCurp_LanzaExcepcion() {
+        Cliente cliente = Cliente.builder()
+                .id(1L)
+                .nombre("Juan")
+                .curp("PELJ950520HGTXR09")
+                .rfc("PELJ950520XXX")
+                .activo(true)
+                .build();
+
+        when(clienteRepository.findById(1L)).thenReturn(java.util.Optional.of(cliente));
+
+        com.proyecto.servicios.model.banco.ClienteUpdateDto updateDto = com.proyecto.servicios.model.banco.ClienteUpdateDto.builder()
+                .nombre("Juan Carlos")
+                .curp("NUEVACURP12345678") // Intento de cambiar CURP
+                .build();
+
+        assertThrows(ReglaNegocioException.class, () -> clienteService.actualizarCliente(1L, updateDto));
+    }
+
+    @Test
+    @DisplayName("Debe realizar la baja lógica del cliente exitosamente")
+    void desactivarCliente_Exitoso() {
+        Cliente cliente = Cliente.builder()
+                .id(1L)
+                .nombre("Juan")
+                .activo(true)
+                .build();
+
+        when(clienteRepository.findById(1L)).thenReturn(java.util.Optional.of(cliente));
+
+        clienteService.desactivarCliente(1L);
+
+        assertFalse(cliente.getActivo());
+        verify(clienteRepository, times(1)).save(cliente);
+        verify(cuentaService, times(1)).desactivarCuentasDeCliente(1L);
     }
 }
