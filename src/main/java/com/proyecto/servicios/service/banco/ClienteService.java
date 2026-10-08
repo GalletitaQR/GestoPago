@@ -1,12 +1,14 @@
 package com.proyecto.servicios.service.banco;
 
 import com.proyecto.servicios.entity.banco.Cliente;
+import com.proyecto.servicios.entity.banco.Cuenta;
 import com.proyecto.servicios.entity.banco.Domicilio;
 import com.proyecto.servicios.exception.banco.*;
 import com.proyecto.servicios.model.banco.ClienteRequestDto;
 import com.proyecto.servicios.model.banco.ClienteResponseDto;
 import com.proyecto.servicios.model.banco.DomicilioDto;
 import com.proyecto.servicios.repositorys.banco.ClienteRepository;
+import com.proyecto.servicios.repositorys.banco.CuentaRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -21,6 +24,9 @@ public class ClienteService {
 
     @Autowired
     private ClienteRepository clienteRepository;
+
+    @Autowired
+    private CuentaRepository cuentaRepository;
 
     @Autowired
     private CuentaService cuentaService;
@@ -297,6 +303,14 @@ public class ClienteService {
                     .build();
         }
 
+        String numeroCuenta = null;
+        if (cliente.getId() != null && cuentaRepository != null) {
+            List<Cuenta> cuentas = cuentaRepository.findByClienteId(cliente.getId());
+            if (cuentas != null && !cuentas.isEmpty()) {
+                numeroCuenta = cuentas.get(0).getNumeroCuenta();
+            }
+        }
+
         return ClienteResponseDto.builder()
                 .id(cliente.getId())
                 .nombre(cliente.getNombre())
@@ -317,6 +331,7 @@ public class ClienteService {
                 .empresa(cliente.getEmpresa())
                 .ingresoMensual(cliente.getIngresoMensual())
                 .activo(cliente.getActivo())
+                .numeroCuenta(numeroCuenta)
                 .fechaCreacion(cliente.getFechaCreacion())
                 .fechaActualizacion(cliente.getFechaActualizacion())
                 .build();
