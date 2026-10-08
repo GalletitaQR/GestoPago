@@ -101,6 +101,64 @@ public class ClienteService {
         return response;
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<ClienteResponseDto> obtenerTodosLosClientes() {
+        return clienteRepository.findAll().stream()
+                .map(this::mapToResponseDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponseDto obtenerClientePorId(Long id) {
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new ClienteNoEncontradoException("Cliente no encontrado con ID: " + id));
+        return mapToResponseDto(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponseDto obtenerClientePorCurp(String curp) {
+        Cliente cliente = clienteRepository.findByCurp(curp.trim().toUpperCase())
+                .orElseThrow(() -> new ClienteNoEncontradoException("Cliente no encontrado con CURP: " + curp));
+        return mapToResponseDto(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponseDto obtenerClientePorRfc(String rfc) {
+        Cliente cliente = clienteRepository.findByRfc(rfc.trim().toUpperCase())
+                .orElseThrow(() -> new ClienteNoEncontradoException("Cliente no encontrado con RFC: " + rfc));
+        return mapToResponseDto(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponseDto obtenerClientePorCorreo(String correo) {
+        Cliente cliente = clienteRepository.findByCorreo(correo.trim().toLowerCase())
+                .orElseThrow(() -> new ClienteNoEncontradoException("Cliente no encontrado con correo: " + correo));
+        return mapToResponseDto(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public ClienteResponseDto obtenerClientePorNumeroCuenta(String numeroCuenta) {
+        Cliente cliente = clienteRepository.findByNumeroCuenta(numeroCuenta.trim())
+                .orElseThrow(() -> new ClienteNoEncontradoException("Cliente no encontrado con número de cuenta: " + numeroCuenta));
+        return mapToResponseDto(cliente);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<ClienteResponseDto> obtenerClientesActivos() {
+        return clienteRepository.findByActivoTrue().stream()
+                .map(this::mapToResponseDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<ClienteResponseDto> obtenerClientesPorRangoFechas(LocalDate inicio, LocalDate fin) {
+        var inicioDateTime = inicio.atStartOfDay();
+        var finDateTime = fin.atTime(23, 59, 59);
+        return clienteRepository.findByFechaCreacionBetween(inicioDateTime, finDateTime).stream()
+                .map(this::mapToResponseDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     public void validarMayoriaDeEdad(LocalDate fechaNacimiento) {
         if (fechaNacimiento == null) {
             throw new ReglaNegocioException("La fecha de nacimiento es obligatoria.");

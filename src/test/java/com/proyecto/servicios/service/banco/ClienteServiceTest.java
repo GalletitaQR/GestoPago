@@ -125,4 +125,33 @@ class ClienteServiceTest {
         assertThrows(CorreoDuplicadoException.class, () -> clienteService.registrarCliente(requestDto));
         verify(clienteRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("Debe obtener cliente por CURP exitosamente")
+    void obtenerClientePorCurp_Exitoso() {
+        Cliente cliente = Cliente.builder()
+                .id(1L)
+                .nombre("Juan")
+                .curp("PELJ950520HGTXR09")
+                .rfc("PELJ950520XXX")
+                .correo("juan@example.com")
+                .build();
+
+        when(clienteRepository.findByCurp("PELJ950520HGTXR09")).thenReturn(java.util.Optional.of(cliente));
+
+        ClienteResponseDto res = clienteService.obtenerClientePorCurp("PELJ950520HGTXR09");
+
+        assertNotNull(res);
+        assertEquals("Juan", res.getNombre());
+        assertEquals("PELJ950520HGTXR09", res.getCurp());
+    }
+
+    @Test
+    @DisplayName("Debe lanzar excepción cuando cliente por CURP no existe")
+    void obtenerClientePorCurp_NoEncontrado_LanzaExcepcion() {
+        when(clienteRepository.findByCurp(any())).thenReturn(java.util.Optional.empty());
+
+        assertThrows(com.proyecto.servicios.exception.banco.ClienteNoEncontradoException.class,
+                () -> clienteService.obtenerClientePorCurp("INEXISTENTE123456"));
+    }
 }
