@@ -94,4 +94,14 @@ public class ClienteController {
             @RequestParam("fin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
         return ResponseEntity.ok(clienteService.obtenerClientesPorRangoFechas(inicio, fin));
     }
+
+    /**
+     * PUT /clientes/{id} - Actualizar información del cliente
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ClienteResponseDto> actualizarCliente(
+            @PathVariable Long id,
+            @Valid @RequestBody com.proyecto.servicios.model.banco.ClienteUpdateDto request) {
+        return ResponseEntity.ok(clienteService.actualizarCliente(id, request));
+    }
 }

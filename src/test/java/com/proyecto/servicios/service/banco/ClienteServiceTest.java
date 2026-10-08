@@ -154,4 +154,25 @@ class ClienteServiceTest {
         assertThrows(com.proyecto.servicios.exception.banco.ClienteNoEncontradoException.class,
                 () -> clienteService.obtenerClientePorCurp("INEXISTENTE123456"));
     }
+
+    @Test
+    @DisplayName("Debe lanzar excepción al intentar modificar la CURP en actualización")
+    void actualizarCliente_ModificarCurp_LanzaExcepcion() {
+        Cliente cliente = Cliente.builder()
+                .id(1L)
+                .nombre("Juan")
+                .curp("PELJ950520HGTXR09")
+                .rfc("PELJ950520XXX")
+                .activo(true)
+                .build();
+
+        when(clienteRepository.findById(1L)).thenReturn(java.util.Optional.of(cliente));
+
+        com.proyecto.servicios.model.banco.ClienteUpdateDto updateDto = com.proyecto.servicios.model.banco.ClienteUpdateDto.builder()
+                .nombre("Juan Carlos")
+                .curp("NUEVACURP12345678") // Intento de cambiar CURP
+                .build();
+
+        assertThrows(ReglaNegocioException.class, () -> clienteService.actualizarCliente(1L, updateDto));
+    }
 }
