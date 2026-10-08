@@ -104,4 +104,16 @@ public class ClienteController {
             @Valid @RequestBody com.proyecto.servicios.model.banco.ClienteUpdateDto request) {
         return ResponseEntity.ok(clienteService.actualizarCliente(id, request));
     }
+
+    /**
+     * DELETE /clientes/{id} - Baja lógica de cliente
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<java.util.Map<String, Object>> desactivarCliente(@PathVariable Long id) {
+        clienteService.desactivarCliente(id);
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("codigo", 200);
+        response.put("mensaje", "Cliente ID " + id + " desactivado (baja lógica realizada) exitosamente.");
+        return ResponseEntity.ok(response);
+    }
 }

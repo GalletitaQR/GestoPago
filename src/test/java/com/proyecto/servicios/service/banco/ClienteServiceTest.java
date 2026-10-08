@@ -175,4 +175,22 @@ class ClienteServiceTest {
 
         assertThrows(ReglaNegocioException.class, () -> clienteService.actualizarCliente(1L, updateDto));
     }
+
+    @Test
+    @DisplayName("Debe realizar la baja lógica del cliente exitosamente")
+    void desactivarCliente_Exitoso() {
+        Cliente cliente = Cliente.builder()
+                .id(1L)
+                .nombre("Juan")
+                .activo(true)
+                .build();
+
+        when(clienteRepository.findById(1L)).thenReturn(java.util.Optional.of(cliente));
+
+        clienteService.desactivarCliente(1L);
+
+        assertFalse(cliente.getActivo());
+        verify(clienteRepository, times(1)).save(cliente);
+        verify(cuentaService, times(1)).desactivarCuentasDeCliente(1L);
+    }
 }

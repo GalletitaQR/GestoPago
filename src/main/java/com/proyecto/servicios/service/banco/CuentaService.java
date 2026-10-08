@@ -74,6 +74,16 @@ public class CuentaService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void desactivarCuentasDeCliente(Long clienteId) {
+        List<Cuenta> cuentas = cuentaRepository.findByClienteId(clienteId);
+        for (Cuenta cuenta : cuentas) {
+            cuenta.setEstatus(EstatusCuenta.INACTIVA);
+            cuentaRepository.save(cuenta);
+        }
+        log.info("Cuentas del cliente ID {} desactivadas.", clienteId);
+    }
+
     private String generarNumeroCuentaUnico() {
         String numeroCuenta;
         do {

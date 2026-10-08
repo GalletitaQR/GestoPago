@@ -237,6 +237,30 @@ public class ClienteService {
         return mapToResponseDto(actualizado);
     }
 
+    /**
+     * Realiza la baja lógica del cliente.
+     * Desactiva al cliente y sus cuentas asociadas.
+     */
+    @Transactional
+    public void desactivarCliente(Long id) {
+        log.info("Iniciando baja lógica del cliente ID: {}", id);
+
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new ClienteNoEncontradoException("Cliente no encontrado con ID: " + id));
+
+        if (Boolean.FALSE.equals(cliente.getActivo())) {
+            throw new ReglaNegocioException("El cliente ya se encuentra inactivo.");
+        }
+
+        cliente.setActivo(false);
+        clienteRepository.save(cliente);
+
+        // Desactivar sus cuentas bancarias asociadas (Solo clientes activos pueden tener cuentas activas)
+        cuentaService.desactivarCuentasDeCliente(id);
+
+        log.info("Baja lógica completada para cliente ID: {}", id);
+    }
+
     public void validarMayoriaDeEdad(LocalDate fechaNacimiento) {
         if (fechaNacimiento == null) {
             throw new ReglaNegocioException("La fecha de nacimiento es obligatoria.");
