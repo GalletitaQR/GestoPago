@@ -38,9 +38,9 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/gestopago_db
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=root
 
-# Configuración de Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
+# Configuración de Redis (soporta URL local o Cloud)
+REDIS_URL=redis://localhost:6379
+
 
 # Credenciales de Servicio Externo GestoPago
 GESTOPAGO_AUTH_URL=https://api.gestopago.com

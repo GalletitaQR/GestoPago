@@ -44,8 +44,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/puntored
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=admin
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379
       - GESTOPAGO_AUTH_URL=https://gestopago.portalventas.net
       - GESTOPAGO_AUTH_ID_DISTRIBUIDOR=83
       - GESTOPAGO_AUTH_CODIGO_DISPOSITIVO=GPS83-TPV-17
