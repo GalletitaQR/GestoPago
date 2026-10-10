@@ -51,7 +51,31 @@ public class ConfigDB {
 
         // Si la URL proviene de proveedores Cloud (Render/Heroku) con formato postgres:// o postgresql://
         if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
-            url = url.replaceFirst("^postgres(ql)?://", "jdbc:postgresql://");
+            try {
+                String dummyUrl = url.replaceFirst("^postgresql?://", "http://");
+                java.net.URI uri = new java.net.URI(dummyUrl);
+
+                String host = uri.getHost();
+                int port = uri.getPort() == -1 ? 5432 : uri.getPort();
+                String path = uri.getPath();
+                String userInfo = uri.getUserInfo();
+
+                if (userInfo != null && userInfo.contains(":")) {
+                    String[] parts = userInfo.split(":", 2);
+                    if (username == null || username.trim().isEmpty()) {
+                        username = parts[0];
+                    }
+                    if (password == null || password.trim().isEmpty()) {
+                        password = parts[1];
+                    }
+                }
+
+                url = "jdbc:postgresql://" + host + ":" + port + (path != null ? path : "");
+                log.info("URL de PostgreSQL convertida a formato JDBC limpia: {}", url);
+            } catch (Exception e) {
+                log.warn("Fallo al parsear URI de base de datos, usando reemplazo directo: {}", e.getMessage());
+                url = url.replaceFirst("^postgresql?://", "jdbc:postgresql://");
+            }
         }
 
         config.setJdbcUrl(url);
