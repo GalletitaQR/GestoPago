@@ -1,0 +1,9 @@
+.gradle
+.idea
+build
+bin
+.git
+.gitignore
+README.md
+DOCUMENTACION_TECNICA.md
+*.log
