@@ -40,52 +40,58 @@ public class ConfigDB {
 
     @Bean(name="sfDatasource")
     public DataSource sfDatasource(){
-        HikariConfig config=new HikariConfig();
-        try{
-            config.setJdbcUrl(env.getProperty("spring.datasource.url"));
-            config.setPassword(env.getProperty("spring.datasource.password"));
-            config.setUsername(env.getProperty("spring.datasource.username"));
-            config.setMaximumPoolSize(10);
-            config.setMaxLifetime(18800);
-            config.setConnectionTimeout(5000);
-            config.setValidationTimeout(5000);
-            config.setMinimumIdle(2);
-            config.setConnectionTestQuery("SELECT 1");
-            config.setPoolName("sfDatasource");
+        HikariConfig config = new HikariConfig();
+        String url = env.getProperty("spring.datasource.url");
+        String username = env.getProperty("spring.datasource.username");
+        String password = env.getProperty("spring.datasource.password");
 
-        }catch (Exception e){
-            log.error("Ha ocurrido un error en la conexcion a base de datos, a causa de:",e);
-            return null;
+        if (url == null || url.trim().isEmpty()) {
+            url = "jdbc:postgresql://localhost:5432/puntored";
         }
+
+        // Si la URL proviene de proveedores Cloud (Render/Heroku) con formato postgres:// o postgresql://
+        if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
+            url = url.replaceFirst("^postgres(ql)?://", "jdbc:postgresql://");
+        }
+
+        config.setJdbcUrl(url);
+        if (username != null && !username.trim().isEmpty()) {
+            config.setUsername(username);
+        }
+        if (password != null && !password.trim().isEmpty()) {
+            config.setPassword(password);
+        }
+
+        config.setMaximumPoolSize(10);
+        config.setMaxLifetime(1880000);
+        config.setConnectionTimeout(30000);
+        config.setValidationTimeout(5000);
+        config.setMinimumIdle(2);
+        config.setConnectionTestQuery("SELECT 1");
+        config.setPoolName("sfDatasource");
+
         return new HikariDataSource(config);
     }
 
     @Bean(name="sfEntityManagerFactory")
     @DependsOn("flyway")
-    public LocalContainerEntityManagerFactoryBean sfEntityManagerFactory(){
-        LocalContainerEntityManagerFactoryBean em= new LocalContainerEntityManagerFactoryBean();
-        try{
-          em.setDataSource(sfDatasource());
-          em.setPackagesToScan(
-                  "com.proyecto.servicios.entity.sf",
-                  "com.proyecto.servicios.entity.gestopago",
-                  "com.proyecto.servicios.entity.banco"
-          );
-          em.setPersistenceUnitName("sfDatasource");
-            HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-            em.setJpaVendorAdapter(vendorAdapter);
-          Map<String, Object> properties=new HashMap<>();
-          properties.put("hibernate.hbm2ddl.auto", "none");
-            properties.put("hibernate.show-sql", false);
-            properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-            properties.put("jakarta.persistence.query.timeout", 600000);
+    public LocalContainerEntityManagerFactoryBean sfEntityManagerFactory(@Qualifier("sfDatasource") DataSource dataSource){
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource);
+        em.setPackagesToScan(
+                "com.proyecto.servicios.entity.sf",
+                "com.proyecto.servicios.entity.gestopago",
+                "com.proyecto.servicios.entity.banco"
+        );
+        em.setPersistenceUnitName("sfDatasource");
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("hibernate.hbm2ddl.auto", "none");
+        properties.put("hibernate.show-sql", false);
+        properties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+        properties.put("jakarta.persistence.query.timeout", 600000);
 
-
-        } catch (Exception e) {
-            log.error("Ha ocurrido un error en la conexion a base de datos, a causa de:",e);
-            return null;
-
-        }
         return em;
     }
  @Bean(name="sfTransactionManager")
