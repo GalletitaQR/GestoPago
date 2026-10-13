@@ -86,32 +86,43 @@ erDiagram
 
 ---
 
-## 4. Catálogo de Endpoints de la API REST
+## 4. Catálogo de Endpoints de la API REST (Control por Banderas en Request Body)
 
-### Autenticación
-- `POST /auth/login`: Autentica al usuario (correo + password) y devuelve el token JWT Bearer.
+Por directrices de seguridad contra vulnerabilidades IDOR, la API no expone identificadores en la ruta (`@PathVariable`). Toda operación se gestiona mediante el cuerpo (`@RequestBody`) evaluando el atributo `bandera`:
 
-### Clientes
-- `POST /clientes`: Registro de cliente (Público / Ejecutivos).
-- `GET /clientes`: Obtener todos los clientes.
-- `GET /clientes/{id}`: Consulta por ID.
-- `GET /clientes/curp/{curp}`: Consulta por CURP.
-- `GET /clientes/rfc/{rfc}`: Consulta por RFC.
-- `GET /clientes/correo/{correo}`: Consulta por correo electrónico.
-- `GET /clientes/numero-cuenta/{numeroCuenta}`: Consulta cliente por número de cuenta.
-- `GET /clientes/activos`: Consulta clientes activos.
-- `GET /clientes/rango-fechas?inicio=YYYY-MM-DD&fin=YYYY-MM-DD`: Consulta por rango de fechas.
-- `PUT /clientes/{id}`: Actualización de cliente (protege CURP/RFC/Número Cuenta).
-- `DELETE /clientes/{id}`: Baja lógica de cliente y desactivación de recursos.
+### Autenticación (`/auth`)
+- `POST /auth/login`: Autentica al usuario (correo + password) y devuelve el token JWT Bearer dentro de un objeto `GenericDataResponse<LoginResponseDto>`.
 
-### Cuentas
-- `GET /cuentas/{numeroCuenta}`: Consulta detalles de la cuenta.
-- `GET /cuentas/activas`: Listar cuentas en estatus ACTIVA.
-- `GET /cuentas/{numeroCuenta}/saldo`: Consulta únicamente del saldo de la cuenta.
+### Clientes (`/clientes`)
+- `POST /clientes`: Registro de cliente con Bean Validation (Retorna HTTP 201 y `GenericDataResponse<ClienteResponseDto>`).
+- `POST /clientes/consultar`: Consulta unificada mediante `ClienteConsultaRequest`:
+  - **Bandera 1:** Por ID (`id` requerido).
+  - **Bandera 2:** Por CURP (`curp` requerido).
+  - **Bandera 3:** Por RFC (`rfc` requerido).
+  - **Bandera 4:** Por Correo Electrónico (`correo` requerido).
+  - **Bandera 5:** Por Número de Cuenta (`numeroCuenta` requerido).
+  - **Bandera 6:** Clientes Activos.
+  - **Bandera 7:** Rango de Fechas (`fechaInicio`, `fechaFin`).
+  - **Bandera 8:** Todos los clientes.
+- `PUT /clientes/actualizar`: Actualización mediante `ClienteActualizaRequest`:
+  - **Bandera 1:** Actualización general (datos personales, contacto y domicilio).
+  - **Bandera 2:** Actualización laboral y de ingresos. *(Bloquea explícitamente CURP, RFC y No. Cuenta)*.
+- `PUT /clientes/eliminar`: Baja lógica mediante `ClienteEliminaRequest` (`bandera = 1`). Desactiva cliente, cuentas y usuario asociado.
 
-### Usuarios
-- `GET /usuarios/{id}`: Consultar usuario por ID.
-- `PUT /usuarios/{id}/password`: Cambio de contraseña validando la contraseña actual y la complejidad.
+### Cuentas (`/cuentas`)
+- `POST /cuentas/consultar`: Consulta mediante `CuentaConsultaRequest`:
+  - **Bandera 1:** Detalle por Número de Cuenta.
+  - **Bandera 2:** Consulta únicamente de Saldo.
+  - **Bandera 3:** Cuentas Activas.
+
+### Usuarios (`/usuarios`)
+- `POST /usuarios/consultar`: Consulta mediante `UsuarioConsultaRequest`:
+  - **Bandera 1:** Por ID (con soporte de caché transparente en Redis).
+  - **Bandera 2:** Por Correo.
+  - **Bandera 3:** Listar todos los usuarios.
+- `PUT /usuarios/actualizar`: Actualización mediante `UsuarioActualizaRequest`:
+  - **Bandera 1:** Cambio de contraseña (validando contraseña actual y fortaleza).
+  - **Bandera 2:** Cambio de estado activo/inactivo.
 
 ---
 
