@@ -109,4 +109,29 @@ public class CuentaService {
                 .fechaActualizacion(cuenta.getFechaActualizacion())
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public Object consultarPorBandera(com.proyecto.servicios.model.banco.CuentaConsultaRequest request) {
+        log.info("Consultando cuenta bancaria por bandera: {}", request.getBandera());
+        switch (request.getBandera()) {
+            case 1:
+                if (request.getNumeroCuenta() == null || request.getNumeroCuenta().isBlank()) {
+                    throw new ReglaNegocioException("El número de cuenta es obligatorio para la bandera 1.");
+                }
+                return obtenerCuentaPorNumero(request.getNumeroCuenta().trim());
+            case 2:
+                if (request.getNumeroCuenta() == null || request.getNumeroCuenta().isBlank()) {
+                    throw new ReglaNegocioException("El número de cuenta es obligatorio para la bandera 2.");
+                }
+                BigDecimal saldo = obtenerSaldo(request.getNumeroCuenta().trim());
+                java.util.Map<String, Object> map = new java.util.HashMap<>();
+                map.put("numeroCuenta", request.getNumeroCuenta().trim());
+                map.put("saldo", saldo);
+                return map;
+            case 3:
+                return obtenerCuentasActivas();
+            default:
+                throw new ReglaNegocioException("Bandera de consulta de cuenta inválida: " + request.getBandera());
+        }
+    }
 }

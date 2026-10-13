@@ -1,49 +1,40 @@
 package com.proyecto.servicios.controller.banco;
 
-import com.proyecto.servicios.model.banco.CuentaResponseDto;
+import com.proyecto.servicios.model.GenericDataResponse;
+import com.proyecto.servicios.model.banco.CuentaConsultaRequest;
 import com.proyecto.servicios.service.banco.CuentaService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/cuentas")
+@Validated
+@CrossOrigin(origins = "*")
+@Tag(name = "Controlador de Cuentas", description = "Endpoints para consulta de cuentas bancarias controlados por banderas en cuerpo de petición, sin IDs en ruta.")
 public class CuentaController {
 
     @Autowired
     private CuentaService cuentaService;
 
     /**
-     * GET /cuentas/activas - Consultar cuentas activas
+     * POST /cuentas/consultar - Consultar cuentas bancarias por banderas en el cuerpo (sin ID en ruta)
+     * Bandera 1: Por número de cuenta
+     * Bandera 2: Consultar saldo
+     * Bandera 3: Cuentas activas
      */
-    @GetMapping("/activas")
-    public ResponseEntity<List<CuentaResponseDto>> obtenerCuentasActivas() {
-        return ResponseEntity.ok(cuentaService.obtenerCuentasActivas());
-    }
-
-    /**
-     * GET /cuentas/{numeroCuenta} - Consultar cuenta por número de cuenta
-     */
-    @GetMapping("/{numeroCuenta}")
-    public ResponseEntity<CuentaResponseDto> obtenerCuentaPorNumero(@PathVariable String numeroCuenta) {
-        CuentaResponseDto response = cuentaService.obtenerCuentaPorNumero(numeroCuenta);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * GET /cuentas/{numeroCuenta}/saldo - Consultar saldo de una cuenta
-     */
-    @GetMapping("/{numeroCuenta}/saldo")
-    public ResponseEntity<Map<String, Object>> obtenerSaldo(@PathVariable String numeroCuenta) {
-        BigDecimal saldo = cuentaService.obtenerSaldo(numeroCuenta);
-        Map<String, Object> response = new HashMap<>();
-        response.put("numeroCuenta", numeroCuenta);
-        response.put("saldo", saldo);
-        return ResponseEntity.ok(response);
+    @Operation(
+            summary = "Consultar cuentas bancarias por banderas",
+            description = "Consulta cuentas y saldos sin ID en la ruta. Bandera 1=Detalle de cuenta, Bandera 2=Saldo, Bandera 3=Cuentas activas."
+    )
+    @PostMapping(value = "/consultar", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericDataResponse<Object>> consultarCuenta(@Valid @RequestBody CuentaConsultaRequest request) {
+        Object datos = cuentaService.consultarPorBandera(request);
+        return ResponseEntity.ok(GenericDataResponse.exito("Consulta de cuenta realizada exitosamente.", datos));
     }
 }

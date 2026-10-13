@@ -41,18 +41,38 @@ public class ConfigDB {
     @Bean(name="sfDatasource")
     public DataSource sfDatasource(){
         HikariConfig config = new HikariConfig();
-        String url = env.getProperty("spring.datasource.url");
-        String username = env.getProperty("spring.datasource.username");
-        String password = env.getProperty("spring.datasource.password");
 
-        if (url == null || url.trim().isEmpty()) {
-            url = "jdbc:postgresql://localhost:5432/puntored";
-        }
+        // 1. Obtener URL de base de datos
+        String url = env.getProperty("SPRING_DATASOURCE_URL");
+        if (url == null || url.trim().isEmpty()) url = env.getProperty("DATABASE_URL");
+        if (url == null || url.trim().isEmpty()) url = System.getenv("SPRING_DATASOURCE_URL");
+        if (url == null || url.trim().isEmpty()) url = System.getenv("DATABASE_URL");
+        if (url == null || url.trim().isEmpty()) url = env.getProperty("spring.datasource.url");
+        if (url == null || url.trim().isEmpty()) url = "jdbc:postgresql://localhost:5432/puntored";
 
-        // Si la URL proviene de proveedores Cloud (Render/Heroku) con formato postgres:// o postgresql://
-        if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
+        // 2. Obtener Usuario (soporta typo RING_DATASOURCE_USERNAME de Render)
+        String username = env.getProperty("SPRING_DATASOURCE_USERNAME");
+        if (username == null || username.trim().isEmpty()) username = env.getProperty("RING_DATASOURCE_USERNAME");
+        if (username == null || username.trim().isEmpty()) username = System.getenv("SPRING_DATASOURCE_USERNAME");
+        if (username == null || username.trim().isEmpty()) username = System.getenv("RING_DATASOURCE_USERNAME");
+        if (username == null || username.trim().isEmpty()) username = env.getProperty("DATABASE_USERNAME");
+        if (username == null || username.trim().isEmpty()) username = env.getProperty("spring.datasource.username");
+
+        // 3. Obtener Contraseña
+        String password = env.getProperty("SPRING_DATASOURCE_PASSWORD");
+        if (password == null || password.trim().isEmpty()) password = System.getenv("SPRING_DATASOURCE_PASSWORD");
+        if (password == null || password.trim().isEmpty()) password = env.getProperty("DATABASE_PASSWORD");
+        if (password == null || password.trim().isEmpty()) password = System.getenv("DATABASE_PASSWORD");
+        if (password == null || password.trim().isEmpty()) password = env.getProperty("spring.datasource.password");
+
+        // 4. Si la URL contiene credenciales (ej: postgres://user:pass@host:port/db o jdbc:postgresql://user:pass@host:port/db)
+        if (url.startsWith("postgres://") || url.startsWith("postgresql://") || url.contains("@")) {
             try {
-                String dummyUrl = url.replaceFirst("^postgresql?://", "http://");
+                String parseUrl = url;
+                if (parseUrl.startsWith("jdbc:postgresql://")) {
+                    parseUrl = parseUrl.substring(5); // postgresql://...
+                }
+                String dummyUrl = parseUrl.replaceFirst("^postgresql?://", "http://");
                 java.net.URI uri = new java.net.URI(dummyUrl);
 
                 String host = uri.getHost();
@@ -62,21 +82,32 @@ public class ConfigDB {
 
                 if (userInfo != null && userInfo.contains(":")) {
                     String[] parts = userInfo.split(":", 2);
-                    if (username == null || username.trim().isEmpty()) {
-                        username = parts[0];
-                    }
-                    if (password == null || password.trim().isEmpty()) {
-                        password = parts[1];
-                    }
+                    username = parts[0];
+                    password = parts[1];
                 }
 
                 url = "jdbc:postgresql://" + host + ":" + port + (path != null ? path : "");
-                log.info("URL de PostgreSQL convertida a formato JDBC limpia: {}", url);
+                log.info("URL de PostgreSQL convertida a JDBC limpio: {}", url);
             } catch (Exception e) {
                 log.warn("Fallo al parsear URI de base de datos, usando reemplazo directo: {}", e.getMessage());
                 url = url.replaceFirst("^postgresql?://", "jdbc:postgresql://");
             }
         }
+
+        // Si username sigue siendo el valor por defecto "postgres", verificar si en el entorno existe RING_DATASOURCE_USERNAME
+        if ("postgres".equalsIgnoreCase(username)) {
+            String ringUser = System.getenv("RING_DATASOURCE_USERNAME");
+            if (ringUser != null && !ringUser.trim().isEmpty()) {
+                username = ringUser;
+            }
+        }
+
+        // Para Render PostgreSQL externo, asegurar sslmode=require si no está presente
+        if (url.contains(".render.com") && !url.contains("sslmode")) {
+            url += (url.contains("?") ? "&" : "?") + "sslmode=require";
+        }
+
+        log.info("Conectando sfDatasource con JDBC URL '{}' y usuario '{}'", url, username);
 
         config.setJdbcUrl(url);
         if (username != null && !username.trim().isEmpty()) {

@@ -1,20 +1,24 @@
 package com.proyecto.servicios.controller.banco;
 
-import com.proyecto.servicios.model.banco.ClienteRequestDto;
-import com.proyecto.servicios.model.banco.ClienteResponseDto;
+import com.proyecto.servicios.model.GenericDataResponse;
+import com.proyecto.servicios.model.GenericResponse;
+import com.proyecto.servicios.model.banco.*;
 import com.proyecto.servicios.service.banco.ClienteService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/clientes")
+@Validated
+@CrossOrigin(origins = "*")
+@Tag(name = "Controlador de Clientes", description = "Endpoints para registro, consulta, actualización y baja lógica de clientes controlados por banderas en cuerpo de petición, sin IDs en ruta.")
 public class ClienteController {
 
     @Autowired
@@ -23,97 +27,66 @@ public class ClienteController {
     /**
      * POST /clientes - Registrar nuevo cliente
      */
-    @PostMapping
-    public ResponseEntity<ClienteResponseDto> registrarCliente(@Valid @RequestBody ClienteRequestDto request) {
-        ClienteResponseDto response = clienteService.registrarCliente(request);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    @Operation(
+            summary = "Registrar nuevo cliente",
+            description = "Registra un nuevo cliente con validaciones exhaustivas de Jakarta Bean Validation. Genera automáticamente cuenta bancaria y usuario de acceso."
+    )
+    @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericDataResponse<ClienteResponseDto>> registrarCliente(@Valid @RequestBody ClienteRequestDto request) {
+        ClienteResponseDto cliente = clienteService.registrarCliente(request);
+        return new ResponseEntity<>(
+                GenericDataResponse.exito("Cliente registrado exitosamente.", cliente),
+                HttpStatus.CREATED
+        );
     }
 
     /**
-     * GET /clientes - Consultar todos los clientes
+     * POST /clientes/consultar - Consultar clientes mediante banderas en cuerpo de petición (sin ID en ruta)
+     * Bandera 1: Por ID
+     * Bandera 2: Por CURP
+     * Bandera 3: Por RFC
+     * Bandera 4: Por Correo
+     * Bandera 5: Por Número de Cuenta
+     * Bandera 6: Clientes Activos
+     * Bandera 7: Rango de Fechas
+     * Bandera 8: Todos los clientes
      */
-    @GetMapping
-    public ResponseEntity<List<ClienteResponseDto>> obtenerTodosLosClientes() {
-        return ResponseEntity.ok(clienteService.obtenerTodosLosClientes());
+    @Operation(
+            summary = "Consultar clientes por banderas",
+            description = "Consulta clientes sin exponer IDs en la ruta. Se controla mediante banderas en el cuerpo (1=ID, 2=CURP, 3=RFC, 4=Correo, 5=No. Cuenta, 6=Activos, 7=Fechas, 8=Todos). Aplica autorización contra IDOR."
+    )
+    @PostMapping(value = "/consultar", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericDataResponse<Object>> consultarCliente(@Valid @RequestBody ClienteConsultaRequest request) {
+        Object resultado = clienteService.consultarPorBandera(request);
+        return ResponseEntity.ok(GenericDataResponse.exito("Consulta de cliente realizada exitosamente.", resultado));
     }
 
     /**
-     * GET /clientes/{id} - Consultar cliente por ID
+     * PUT /clientes/actualizar - Actualizar cliente mediante banderas en cuerpo de petición (sin ID en ruta)
+     * Bandera 1: Actualización general
+     * Bandera 2: Actualización laboral/ingresos
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<ClienteResponseDto> obtenerClientePorId(@PathVariable Long id) {
-        return ResponseEntity.ok(clienteService.obtenerClientePorId(id));
+    @Operation(
+            summary = "Actualizar cliente por banderas",
+            description = "Actualiza datos del cliente sin ID en la ruta. Bandera 1=Datos generales, Bandera 2=Laboral/ingresos. Valida permisos del usuario autenticado."
+    )
+    @PutMapping(value = "/actualizar", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericDataResponse<ClienteResponseDto>> actualizarCliente(@Valid @RequestBody ClienteActualizaRequest request) {
+        ClienteResponseDto cliente = clienteService.actualizarPorBandera(request);
+        return ResponseEntity.ok(GenericDataResponse.exito("Cliente actualizado exitosamente.", cliente));
     }
 
     /**
-     * GET /clientes/curp/{curp} - Consultar cliente por CURP
+     * PUT /clientes/eliminar - Baja lógica de cliente mediante banderas en cuerpo de petición (sin ID en ruta)
+     * Bandera 1: Baja lógica
      */
-    @GetMapping("/curp/{curp}")
-    public ResponseEntity<ClienteResponseDto> obtenerClientePorCurp(@PathVariable String curp) {
-        return ResponseEntity.ok(clienteService.obtenerClientePorCurp(curp));
-    }
-
-    /**
-     * GET /clientes/rfc/{rfc} - Consultar cliente por RFC
-     */
-    @GetMapping("/rfc/{rfc}")
-    public ResponseEntity<ClienteResponseDto> obtenerClientePorRfc(@PathVariable String rfc) {
-        return ResponseEntity.ok(clienteService.obtenerClientePorRfc(rfc));
-    }
-
-    /**
-     * GET /clientes/correo/{correo} - Consultar cliente por correo
-     */
-    @GetMapping("/correo/{correo}")
-    public ResponseEntity<ClienteResponseDto> obtenerClientePorCorreo(@PathVariable String correo) {
-        return ResponseEntity.ok(clienteService.obtenerClientePorCorreo(correo));
-    }
-
-    /**
-     * GET /clientes/numero-cuenta/{numeroCuenta} - Consultar cliente por número de cuenta
-     */
-    @GetMapping("/numero-cuenta/{numeroCuenta}")
-    public ResponseEntity<ClienteResponseDto> obtenerClientePorNumeroCuenta(@PathVariable String numeroCuenta) {
-        return ResponseEntity.ok(clienteService.obtenerClientePorNumeroCuenta(numeroCuenta));
-    }
-
-    /**
-     * GET /clientes/activos - Consultar clientes activos
-     */
-    @GetMapping("/activos")
-    public ResponseEntity<List<ClienteResponseDto>> obtenerClientesActivos() {
-        return ResponseEntity.ok(clienteService.obtenerClientesActivos());
-    }
-
-    /**
-     * GET /clientes/rango-fechas - Obtener clientes registrados en un rango de fechas
-     */
-    @GetMapping("/rango-fechas")
-    public ResponseEntity<List<ClienteResponseDto>> obtenerClientesPorRangoFechas(
-            @RequestParam("inicio") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
-            @RequestParam("fin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
-        return ResponseEntity.ok(clienteService.obtenerClientesPorRangoFechas(inicio, fin));
-    }
-
-    /**
-     * PUT /clientes/{id} - Actualizar información del cliente
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<ClienteResponseDto> actualizarCliente(
-            @PathVariable Long id,
-            @Valid @RequestBody com.proyecto.servicios.model.banco.ClienteUpdateDto request) {
-        return ResponseEntity.ok(clienteService.actualizarCliente(id, request));
-    }
-
-    /**
-     * DELETE /clientes/{id} - Baja lógica de cliente
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<java.util.Map<String, Object>> desactivarCliente(@PathVariable Long id) {
-        clienteService.desactivarCliente(id);
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("codigo", 200);
-        response.put("mensaje", "Cliente ID " + id + " desactivado (baja lógica realizada) exitosamente.");
-        return ResponseEntity.ok(response);
+    @Operation(
+            summary = "Baja lógica de cliente por banderas",
+            description = "Desactiva lógicamente al cliente, sus cuentas bancarias y su usuario asociado. Se controla mediante bandera=1 en el cuerpo de petición."
+    )
+    @PutMapping(value = "/eliminar", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericResponse> eliminarCliente(@Valid @RequestBody ClienteEliminaRequest request) {
+        clienteService.eliminarPorBandera(request);
+        return ResponseEntity.ok(GenericResponse.exito("Cliente ID " + request.getId() + " desactivado exitosamente (baja lógica)."));
     }
 }

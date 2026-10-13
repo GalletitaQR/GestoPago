@@ -22,18 +22,19 @@ public class PersonasServiceImpl implements PersonaService {
     private PersonasRepository personasRepository;
 
     @Override
-    public PersonaResponse creaPersona(PersonasRequest personasRequest) {
+    public GenericResponse creaPersona(PersonasRequest personasRequest) {
+        GenericResponse genericResponse = new GenericResponse();
         PersonaResponse person = new PersonaResponse();
         Personas persona = new Personas();
         persona.setNombre(personasRequest.getNombre());
         persona.setApellidoMaterno(personasRequest.getApellidoMaterno());
         persona.setApellidoP(personasRequest.getApellidoP());
         personasRepository.save(persona);
-        person.setCodigo(1);
+        person.setCodigo(0);
         person.setMensaje("Exito");
         BeanUtils.copyProperties(persona, person);
 
-        return person;
+        return genericResponse;
     }
 
     @Override

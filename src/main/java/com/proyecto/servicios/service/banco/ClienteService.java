@@ -7,6 +7,8 @@ import com.proyecto.servicios.exception.banco.*;
 import com.proyecto.servicios.model.banco.ClienteRequestDto;
 import com.proyecto.servicios.model.banco.ClienteResponseDto;
 import com.proyecto.servicios.model.banco.DomicilioDto;
+import com.proyecto.servicios.config.security.SecurityHelper;
+import com.proyecto.servicios.model.banco.*;
 import com.proyecto.servicios.repositorys.banco.ClienteRepository;
 import com.proyecto.servicios.repositorys.banco.CuentaRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,9 @@ public class ClienteService {
 
     @Autowired
     private UsuarioService usuarioService;
+
+    @Autowired
+    private SecurityHelper securityHelper;
 
     /**
      * Registra un nuevo cliente validando las reglas de negocio, creando su cuenta bancaria y usuario de acceso.
@@ -335,5 +340,110 @@ public class ClienteService {
                 .fechaCreacion(cliente.getFechaCreacion())
                 .fechaActualizacion(cliente.getFechaActualizacion())
                 .build();
+    }
+
+    /**
+     * Consulta de clientes unificada y controlada por banderas en el cuerpo (sin ID en ruta).
+     */
+    @Transactional(readOnly = true)
+    public Object consultarPorBandera(ClienteConsultaRequest request) {
+        log.info("Consultando cliente por bandera: {}", request.getBandera());
+
+        switch (request.getBandera()) {
+            case 1: // Por ID
+                if (request.getId() == null) {
+                    throw new ReglaNegocioException("El ID de cliente es obligatorio para la bandera 1.");
+                }
+                securityHelper.validarAccesoACliente(request.getId());
+                return obtenerClientePorId(request.getId());
+
+            case 2: // Por CURP
+                if (request.getCurp() == null || request.getCurp().isBlank()) {
+                    throw new ReglaNegocioException("La CURP es obligatoria para la bandera 2.");
+                }
+                return obtenerClientePorCurp(request.getCurp());
+
+            case 3: // Por RFC
+                if (request.getRfc() == null || request.getRfc().isBlank()) {
+                    throw new ReglaNegocioException("El RFC es obligatorio para la bandera 3.");
+                }
+                return obtenerClientePorRfc(request.getRfc());
+
+            case 4: // Por Correo
+                if (request.getCorreo() == null || request.getCorreo().isBlank()) {
+                    throw new ReglaNegocioException("El correo electrónico es obligatorio para la bandera 4.");
+                }
+                return obtenerClientePorCorreo(request.getCorreo());
+
+            case 5: // Por Número de Cuenta
+                if (request.getNumeroCuenta() == null || request.getNumeroCuenta().isBlank()) {
+                    throw new ReglaNegocioException("El número de cuenta es obligatorio para la bandera 5.");
+                }
+                return obtenerClientePorNumeroCuenta(request.getNumeroCuenta());
+
+            case 6: // Clientes Activos
+                return obtenerClientesActivos();
+
+            case 7: // Rango de Fechas
+                if (request.getFechaInicio() == null || request.getFechaFin() == null) {
+                    throw new ReglaNegocioException("Las fechas de inicio y fin son obligatorias para la bandera 7.");
+                }
+                return obtenerClientesPorRangoFechas(request.getFechaInicio(), request.getFechaFin());
+
+            case 8: // Todos los clientes
+                return obtenerTodosLosClientes();
+
+            default:
+                throw new ReglaNegocioException("Bandera de consulta inválida: " + request.getBandera());
+        }
+    }
+
+    /**
+     * Actualización de cliente controlada por banderas en el cuerpo (sin ID en ruta).
+     */
+    @Transactional
+    public ClienteResponseDto actualizarPorBandera(ClienteActualizaRequest request) {
+        log.info("Actualizando cliente ID: {} con bandera: {}", request.getId(), request.getBandera());
+
+        securityHelper.validarAccesoACliente(request.getId());
+
+        ClienteUpdateDto updateDto = ClienteUpdateDto.builder()
+                .nombre(request.getNombre())
+                .segundoNombre(request.getSegundoNombre())
+                .apellidoPaterno(request.getApellidoPaterno())
+                .apellidoMaterno(request.getApellidoMaterno())
+                .fechaNacimiento(request.getFechaNacimiento())
+                .sexo(request.getSexo())
+                .nacionalidad(request.getNacionalidad())
+                .estadoCivil(request.getEstadoCivil())
+                .correo(request.getCorreo())
+                .telefonoMovil(request.getTelefonoMovil())
+                .telefonoAlternativo(request.getTelefonoAlternativo())
+                .domicilio(request.getDomicilio())
+                .ocupacion(request.getOcupacion())
+                .empresa(request.getEmpresa())
+                .ingresoMensual(request.getIngresoMensual())
+                .curp(request.getCurp())
+                .rfc(request.getRfc())
+                .numeroCuenta(request.getNumeroCuenta())
+                .build();
+
+        return actualizarCliente(request.getId(), updateDto);
+    }
+
+    /**
+     * Baja lógica de cliente controlada por banderas en el cuerpo (sin ID en ruta).
+     */
+    @Transactional
+    public void eliminarPorBandera(ClienteEliminaRequest request) {
+        log.info("Iniciando baja lógica de cliente ID: {} con bandera: {}", request.getId(), request.getBandera());
+
+        securityHelper.validarAccesoACliente(request.getId());
+
+        if (request.getBandera() == 1) {
+            desactivarCliente(request.getId());
+        } else {
+            throw new ReglaNegocioException("Bandera de eliminación inválida: " + request.getBandera());
+        }
     }
 }
