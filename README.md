@@ -108,6 +108,15 @@ Content-Type: application/json
 
 ---
 
+### 4. Módulo de Consulta de Personas (`/api/v1/personas`)
+
+| Endpoint | Método | Request Body | Descripción de Banderas |
+| :--- | :---: | :--- | :--- |
+| `/api/v1/personas/consultar` | `POST` | `PersonaConsultaRequest` | **Bandera 1:** Por ID (con lectura prioritaria en Redis y respaldo en PostgreSQL).<br>**Bandera 2:** Por Nombre de Usuario (Username). |
+| `/api/v1/personas/cache/limpiar` | `POST` | `PersonaCacheRequest` | **Bandera 1:** Invalidar/Limpiar clave de caché en Redis por ID. |
+
+---
+
 ## 📦 Estructura de Respuesta Uniforme (`GenericResponse`)
 
 Todas las operaciones de la API responden con una estructura estándar:

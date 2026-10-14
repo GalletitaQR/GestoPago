@@ -124,6 +124,13 @@ Por directrices de seguridad contra vulnerabilidades IDOR, la API no expone iden
   - **Bandera 1:** Cambio de contraseña (validando contraseña actual y fortaleza).
   - **Bandera 2:** Cambio de estado activo/inactivo.
 
+### Consulta de Personas (`/api/v1/personas`)
+- `POST /api/v1/personas/consultar`: Consulta mediante `PersonaConsultaRequest`:
+  - **Bandera 1:** Por ID (lectura en Redis con respaldo en PostgreSQL).
+  - **Bandera 2:** Por Username.
+- `POST /api/v1/personas/cache/limpiar`: Invalidación de caché mediante `PersonaCacheRequest`:
+  - **Bandera 1:** Limpiar caché de persona por ID.
+
 ---
 
 ## 5. Script de Creación de Base de Datos SQL

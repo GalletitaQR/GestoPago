@@ -2,7 +2,10 @@ package com.proyecto.servicios.service.Impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.proyecto.servicios.entity.sf.Personas;
+import com.proyecto.servicios.exception.banco.ReglaNegocioException;
+import com.proyecto.servicios.model.PersonaCacheRequest;
 import com.proyecto.servicios.model.PersonaConsultaDTO;
+import com.proyecto.servicios.model.PersonaConsultaRequest;
 import com.proyecto.servicios.model.RecursoNoEncontradoException;
 import com.proyecto.servicios.repositorys.sf.PersonasRepository;
 import com.proyecto.servicios.service.PersonaConsultaService;
@@ -156,5 +159,36 @@ public class PersonaConsultaServiceImpl implements PersonaConsultaService {
         } catch (Exception e) {
             log.warn("No se pudo guardar la clave '{}' en Redis: {}", key, e.getMessage());
         }
+    }
+
+    @Override
+    public PersonaConsultaDTO consultarPorBandera(PersonaConsultaRequest request) {
+        log.info("Consultando persona por bandera: {}", request.getBandera());
+        switch (request.getBandera()) {
+            case 1:
+                if (request.getId() == null) {
+                    throw new ReglaNegocioException("El ID de la persona es obligatorio para la bandera 1 (Consulta por ID).");
+                }
+                return obtenerPorId(request.getId());
+            case 2:
+                if (request.getUsername() == null || request.getUsername().isBlank()) {
+                    throw new ReglaNegocioException("El username es obligatorio para la bandera 2 (Consulta por Username).");
+                }
+                return obtenerPorUsername(request.getUsername().trim());
+            default:
+                throw new ReglaNegocioException("Bandera de consulta inválida: " + request.getBandera());
+        }
+    }
+
+    @Override
+    public boolean limpiarCachePorBandera(PersonaCacheRequest request) {
+        log.info("Limpiando caché de persona por bandera: {}", request.getBandera());
+        if (request.getBandera() == 1) {
+            if (request.getId() == null) {
+                throw new ReglaNegocioException("El ID de la persona es obligatorio para la bandera 1.");
+            }
+            return limpiarCache(request.getId());
+        }
+        throw new ReglaNegocioException("Bandera de operación inválida: " + request.getBandera());
     }
 }
