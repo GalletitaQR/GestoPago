@@ -95,6 +95,33 @@ public class GlobalExceptionHandler {
                 .body(new GenericResponse(HttpStatus.CONFLICT.value(), ex.getMessage()));
     }
 
+    // 409 - Violación de Integridad de Datos en Base de Datos (Unique constraints)
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<GenericResponse> manejarDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("Violación de integridad de datos en BD: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new GenericResponse(HttpStatus.CONFLICT.value(),
+                        "Conflicto de integridad: Los datos proporcionados violan una restricción única del sistema."));
+    }
+
+    // 400 - Error de lectura del cuerpo HTTP (JSON malformado o tipo incompatible)
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<GenericResponse> manejarHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        log.warn("Cuerpo de petición ilegible o malformado: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new GenericResponse(HttpStatus.BAD_REQUEST.value(),
+                        "El cuerpo de la petición no tiene un formato JSON válido o contiene tipos de datos incorrectos."));
+    }
+
+    // 405 - Método HTTP No Soportado
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<GenericResponse> manejarMetodoNoSoportado(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        log.warn("Método HTTP no soportado: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(new GenericResponse(HttpStatus.METHOD_NOT_ALLOWED.value(),
+                        "El método HTTP " + ex.getMethod() + " no está soportado para este endpoint."));
+    }
+
     // 500 - Excepción general no controlada (sin exponer detalles internos sensibles)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<GenericResponse> manejarExcepcionGeneral(Exception ex) {

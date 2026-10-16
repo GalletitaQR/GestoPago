@@ -32,35 +32,62 @@ Aplicación web empresarial desarrollada en **Spring Boot 3.3.6** (Java 17) bajo
 
 En lugar de crear múltiples rutas o exponer IDs en la URL, las operaciones se consolidan en endpoints base que evalúan el atributo `bandera` dentro del JSON:
 
-### 1. Módulo de Usuarios (`/usuarios`)
+### 1. Módulo de Administración de Usuarios (`/usuarios`)
 
-| Endpoint | Método | Request Body | Descripción de Banderas |
-| :--- | :---: | :--- | :--- |
-| `/usuarios/consultar` | `POST` | `UsuarioConsultaRequest` | **Bandera 1:** Consulta por ID (`id` requerido).<br>**Bandera 2:** Consulta por Correo (`correo` requerido).<br>**Bandera 3:** Listar todos los usuarios.<br>*(Incluye `usarCache: true/false` para alternar entre caché o BD sin duplicar endpoints)* |
-| `/usuarios/actualizar` | `PUT` | `UsuarioActualizaRequest` | **Bandera 1:** Actualizar Contraseña (`passwordActual`, `nuevaPassword`).<br>**Bandera 2:** Actualizar Estado Activo (`activo: true/false`). |
+Cumple estrictamente con la arquitectura por capas, uso exclusivo de DTOs, Bean Validation, manejo centralizado de excepciones con `@RestControllerAdvice`, y **cero `@PathVariable` y cero `@RequestParam`** (todas las operaciones y criterios se envían en el cuerpo JSON).
 
-#### Ejemplo: Consulta de Usuario por ID
+| Endpoint | Método | Request Body | Código HTTP | Descripción |
+| :--- | :---: | :--- | :---: | :--- |
+| `/usuarios` | `POST` | `UsuarioCrearRequest` | `201 CREATED` | **Registrar usuario:** Crea usuario vinculado a un cliente bancario con contraseña BCrypt. Protege campos controlados por el servidor. |
+| `/usuarios/consultar` | `POST` | `UsuarioConsultaRequest` | `200 OK` | **Endpoint único de consulta:** Permite búsquedas dinámicas combinando filtros (`id`, `clienteId`, `correo`, `activo`, `fechas`) o banderas (`1=ID`, `2=Correo`, `3=Todos`). |
+| `/usuarios/actualizar` | `PUT` | `UsuarioActualizaRequest` | `200 OK` | **Actualizar usuario:** Modifica información permitida (`correo`, `activo`, o contraseña) mediante ID en cuerpo. |
+| `/usuarios/eliminar` | `PUT` | `UsuarioEliminaRequest` | `200 OK` | **Baja lógica de usuario:** Desactiva lógicamente al usuario sin eliminar el historial. ID en el cuerpo sin variables en ruta. |
+
+#### Ejemplo 1: Creación de Usuario (`POST /usuarios`)
+```json
+POST /usuarios
+Content-Type: application/json
+
+{
+  "clienteId": 1,
+  "correo": "usuario.nuevo@banco.com",
+  "password": "Password123#"
+}
+```
+
+#### Ejemplo 2: Consulta Dinámica Combinando Filtros (`POST /usuarios/consultar`)
 ```json
 POST /usuarios/consultar
 Content-Type: application/json
 
 {
-  "bandera": 1,
-  "id": 1,
-  "usarCache": true
+  "activo": true,
+  "correo": "usuario",
+  "fechaCreacionDesde": "2026-01-01T00:00:00",
+  "fechaCreacionHasta": "2026-12-31T23:59:59"
 }
 ```
 
-#### Ejemplo: Actualización de Contraseña
+#### Ejemplo 3: Actualización de Información (`PUT /usuarios/actualizar`)
 ```json
 PUT /usuarios/actualizar
 Content-Type: application/json
 
 {
   "id": 1,
-  "bandera": 1,
-  "passwordActual": "Temporal123#",
-  "nuevaPassword": "PasswordSegura2026!"
+  "correo": "usuario.actualizado@banco.com",
+  "activo": true
+}
+```
+
+#### Ejemplo 4: Baja Lógica (`PUT /usuarios/eliminar`)
+```json
+PUT /usuarios/eliminar
+Content-Type: application/json
+
+{
+  "id": 1,
+  "motivo": "Inactivación solicitada por el usuario"
 }
 ```
 
