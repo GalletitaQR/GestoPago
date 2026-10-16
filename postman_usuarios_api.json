@@ -1,0 +1,359 @@
+{
+  "info": {
+    "_postman_id": "a9b8c7d6-e5f4-4321-ba98-76543210fedc",
+    "name": "API REST - Administración de Usuarios",
+    "description": "Colección completa para pruebas de la API REST de Administración de Usuarios con Spring Boot. Cumple con arquitectura por capas, DTOs, Bean Validation, manejo de excepciones (@RestControllerAdvice) y estricta restricción de CERO @PathVariable y CERO @RequestParam (todos los criterios y operaciones se envían vía @RequestBody).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Registro / Creación de Usuario",
+      "item": [
+        {
+          "name": "POST /usuarios - Registro Exitoso (201 Created)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": 1,\n  \"correo\": \"admin.usuario@banco.com\",\n  \"password\": \"PasswordSegura2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            },
+            "description": "Registra un usuario nuevo asociado a un cliente. No permite al cliente modificar campos de control (id, fechas, estado)."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /usuarios - Error de Validación Bean Validation (400 Bad Request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": -5,\n  \"correo\": \"correo-invalido-sin-arroba\",\n  \"password\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            },
+            "description": "Prueba de fallo de Bean Validation (@Email, @Positive, @Pattern, @Size) capturado centralmente por GlobalExceptionHandler."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /usuarios - Error Cliente Inexistente (404 Not Found)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": 99999,\n  \"correo\": \"usuario.prueba@banco.com\",\n  \"password\": \"PasswordSegura2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            },
+            "description": "Prueba de excepción personalizada ClienteNoEncontradoException."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /usuarios - Error Correo Duplicado (409 Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": 1,\n  \"correo\": \"admin.usuario@banco.com\",\n  \"password\": \"PasswordSegura2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            },
+            "description": "Prueba de excepción de negocio CorreoDuplicadoException cuando el correo ya existe en BD."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Consulta Dinámica Combinada (Endpoint Único)",
+      "item": [
+        {
+          "name": "POST /usuarios/consultar - Filtros Dinámicos Combinados (200 OK)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"banco\",\n  \"activo\": true,\n  \"fechaCreacionDesde\": \"2026-01-01T00:00:00\",\n  \"fechaCreacionHasta\": \"2026-12-31T23:59:59\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/consultar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "consultar"]
+            },
+            "description": "Endpoint ÚNICO de consulta que combina múltiples criterios opcionales (correo parcial, activo, rango de fechas) mediante Spring Data JPA Specification."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /usuarios/consultar - Consulta por ID y Caché (Bandera 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bandera\": 1,\n  \"id\": 1,\n  \"usarCache\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/consultar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "consultar"]
+            },
+            "description": "Consulta por ID específico en el cuerpo de la petición utilizando caché transparente en Redis."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /usuarios/consultar - Consulta por Correo (Bandera 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bandera\": 2,\n  \"correo\": \"admin.usuario@banco.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/consultar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "consultar"]
+            },
+            "description": "Consulta por correo exacto utilizando bandera 2 sin parámetros en URL."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /usuarios/consultar - Listar Todos los Usuarios (Bandera 3 o Body Vacío)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bandera\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/consultar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "consultar"]
+            },
+            "description": "Lista la totalidad de los usuarios registrados."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Actualización de Usuario",
+      "item": [
+        {
+          "name": "PUT /usuarios/actualizar - Actualización General (200 OK)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"correo\": \"admin.actualizado@banco.com\",\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/actualizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "actualizar"]
+            },
+            "description": "Actualiza correo o estado activo sin tocar campos del servidor como fechaCreacion o fechaActualizacion."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /usuarios/actualizar - Cambio de Contraseña (Bandera 1)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"bandera\": 1,\n  \"passwordActual\": \"PasswordSegura2026!\",\n  \"nuevaPassword\": \"NuevaPassword2026#\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/actualizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "actualizar"]
+            },
+            "description": "Actualiza la contraseña validando la contraseña actual y cifrando con BCrypt la nueva."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /usuarios/actualizar - Cambio de Estado Activo (Bandera 2)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"bandera\": 2,\n  \"activo\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/actualizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "actualizar"]
+            },
+            "description": "Habilita o deshabilita al usuario sin exponer el ID en la ruta."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /usuarios/actualizar - Error Usuario No Encontrado (404 Not Found)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 9999,\n  \"correo\": \"noexiste@banco.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/actualizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "actualizar"]
+            },
+            "description": "Prueba de respuesta 404 al intentar actualizar un ID inexistente."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Baja Lógica de Usuario",
+      "item": [
+        {
+          "name": "PUT /usuarios/eliminar - Baja Lógica Exitosa (200 OK)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"motivo\": \"Inactivación por solicitud del cliente\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/eliminar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "eliminar"]
+            },
+            "description": "Realiza la baja lógica cambiando activo=false sin @PathVariable ni @RequestParam."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /usuarios/eliminar - Error ID Inexistente (404 Not Found)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 88888\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/eliminar",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "eliminar"]
+            },
+            "description": "Responde 404 con formato uniforme GenericResponse."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

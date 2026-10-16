@@ -116,13 +116,16 @@ Por directrices de seguridad contra vulnerabilidades IDOR, la API no expone iden
   - **Bandera 3:** Cuentas Activas.
 
 ### Usuarios (`/usuarios`)
-- `POST /usuarios/consultar`: Consulta mediante `UsuarioConsultaRequest`:
-  - **Bandera 1:** Por ID (con soporte de caché transparente en Redis).
-  - **Bandera 2:** Por Correo.
-  - **Bandera 3:** Listar todos los usuarios.
+- `POST /usuarios`: Creación / Registro de nuevo usuario mediante `UsuarioCrearRequest`:
+  - Requiere `clienteId`, `correo` y `password` (validación de fortaleza y BCrypt).
+  - Protege campos controlados por el servidor (`id`, `fechaCreacion`, `fechaActualizacion`).
+- `POST /usuarios/consultar`: Endpoint único de consulta mediante `UsuarioConsultaRequest`:
+  - **Búsqueda Dinámica Multicriterio:** Permite combinar filtros opcionales en el cuerpo (`id`, `clienteId`, `correo`, `activo`, `fechaCreacionDesde`, `fechaCreacionHasta`) utilizando Spring Data JPA `Specification`.
+  - **Banderas Heredadas:** Soporta `bandera = 1` (ID con caché Redis), `bandera = 2` (Correo) y `bandera = 3` (Todos).
 - `PUT /usuarios/actualizar`: Actualización mediante `UsuarioActualizaRequest`:
-  - **Bandera 1:** Cambio de contraseña (validando contraseña actual y fortaleza).
-  - **Bandera 2:** Cambio de estado activo/inactivo.
+  - Actualización directa de datos (`correo`, `activo`, o contraseña) recibiendo `id` en el cuerpo (sin `@PathVariable`).
+  - Soporta banderas `bandera = 1` (Contraseña) y `bandera = 2` (Estado activo).
+- `PUT /usuarios/eliminar`: Baja lógica mediante `UsuarioEliminaRequest` recibiendo `id` y `motivo` en el cuerpo.
 
 ### Consulta de Personas (`/api/v1/personas`)
 - `POST /api/v1/personas/consultar`: Consulta mediante `PersonaConsultaRequest`:
